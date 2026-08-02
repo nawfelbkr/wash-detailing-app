@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Wash & Detailing">
+<title>Wash & Detailing</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/supabase/2.39.7/umd/supabase.min.js"></script>
+<style>
+  :root{
+    --bg:#0a0a0d;
+    --panel:#121218;
+    --panel2:#1a1a22;
+    --border:#26262f;
+    --text:#f2f2f5;
+    --muted:#8b8b96;
+    --accent1:#ff5f6d;
+    --accent2:#a855f7;
+    --grad: linear-gradient(135deg, var(--accent1), var(--accent2));
+    --success:#22c55e;
+    --danger:#ef4444;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;}
+  body{min-height:100vh; padding-bottom:40px;}
+
+  /* ---------- LOGIN ---------- */
+  #loginScreen{
+    position:fixed; inset:0; background:var(--bg); z-index:999;
+    display:flex; align-items:center; justify-content:center; flex-direction:column;
+    padding:24px;
+  }
+  .login-box{
+    width:100%; max-width:340px; background:var(--panel); border:1px solid var(--border);
+    border-radius:20px; padding:32px 24px; text-align:center;
+  }
+  .login-logo{
+    font-size:28px; font-weight:800; background:var(--grad); -webkit-background-clip:text;
+    background-clip:text; -webkit-text-fill-color:transparent; margin-bottom:4px;
+  }
+  .login-sub{color:var(--muted); font-size:13px; margin-bottom:24px; letter-spacing:0.5px; text-transform:uppercase;}
+  #passwordInput{
+    width:100%; padding:14px 16px; border-radius:12px; border:1px solid var(--border);
+    background:var(--panel2); color:var(--text); font-size:16px; margin-bottom:12px; text-align:center;
+    letter-spacing:2px;
+  }
+  #passwordInput:focus{outline:none; border-color:var(--accent2);}
+  #loginBtn{
+    width:100%; padding:14px; border-radius:12px; border:none; background:var(--grad);
+    color:#fff; font-size:15px; font-weight:700; cursor:pointer;
+  }
+  #loginError{color:var(--danger); font-size:13px; margin-top:10px; min-height:18px;}
+
+  /* ---------- APP ---------- */
+  #app{display:none;}
+  header{
+    padding:16px; border-bottom:1px solid var(--border); position:sticky; top:0;
+    background:rgba(10,10,13,0.95); backdrop-filter:blur(10px); z-index:50;
+  }
+  .header-top{display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;}
+  .brand{display:flex; align-items:center; gap:10px;}
+  .brand-icon{width:34px;height:34px;border-radius:10px;background:var(--grad); display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;color:#fff;}
+  .brand-text{display:flex; flex-direction:column; line-height:1.15;}
+  .brand-title{font-weight:800; font-size:16px;}
+  .brand-eyebrow{font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:1px;}
+  .header-actions{display:flex; gap:8px;}
+  .btn{
+    border:none; border-radius:10px; padding:9px 14px; font-size:13px; font-weight:700;
+    cursor:pointer; white-space:nowrap;
+  }
+  .btn-ghost{background:var(--panel2); color:var(--text); border:1px solid var(--border);}
+  .btn-primary{background:var(--grad); color:#fff;}
+
+  .tabs{display:flex; gap:6px; overflow-x:auto; padding-bottom:2px;}
+  .tab{
+    padding:8px 14px; border-radius:20px; background:var(--panel2); border:1px solid var(--border);
+    font-size:13px; font-weight:600; color:var(--muted); white-space:nowrap; cursor:pointer;
+  }
+  .tab.active{background:var(--grad); color:#fff; border-color:transparent;}
+
+  .totals{display:grid; grid-template-columns:repeat(4,1fr); gap:8px; padding:12px 16px;}
+  .total-card{background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:10px 8px; text-align:center;}
+  .total-card.highlight{background:var(--grad); border:none;}
+  .total-label{font-size:9px; text-transform:uppercase; color:var(--muted); letter-spacing:0.5px; margin-bottom:4px;}
+  .total-card.highlight .total-label{color:rgba(255,255,255,0.85);}
+  .total-value{font-size:15px; font-weight:800;}
+
+  main{padding:8px 16px 100px;}
+  .empty-state{text-align:center; padding:60px 20px; color:var(--muted);}
+  .empty-state h3{color:var(--text); font-size:16px; margin-bottom:6px;}
+  .empty-state p{font-size:13px;}
+
+  .job-card{
+    background:var(--panel); border:1px solid var(--border); border-radius:14px;
+    padding:14px; margin-bottom:10px;
+  }
+  .job-top{display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;}
+  .job-invoice{font-weight:800; font-size:15px;}
+  .job-dept{
+    font-size:10px; font-weight:700; padding:3px 8px; border-radius:6px; text-transform:uppercase;
+    background:var(--panel2); color:var(--muted); letter-spacing:0.3px;
+  }
+  .job-dept.service{color:#60a5fa;}
+  .job-dept.newcars{color:#34d399;}
+  .job-dept.usedcars{color:#fbbf24;}
+  .job-grid{display:grid; grid-template-columns:1fr 1fr; gap:6px 12px; font-size:12.5px; color:var(--muted); margin-bottom:8px;}
+  .job-grid b{color:var(--text); font-weight:600;}
+  .job-desc{font-size:13px; margin-bottom:10px; color:var(--text);}
+  .job-photos{display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap;}
+  .job-photos img{width:52px;height:52px;border-radius:8px;object-fit:cover; border:1px solid var(--border);}
+  .job-bottom{display:flex; justify-content:space-between; align-items:center;}
+  .job-price{font-size:17px; font-weight:800; background:var(--grad); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;}
+  .job-actions{display:flex; gap:8px;}
+  .icon-btn{
+    width:32px;height:32px; border-radius:8px; border:1px solid var(--border); background:var(--panel2);
+    color:var(--muted); display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:14px;
+  }
+
+  .fab{
+    position:fixed; bottom:24px; right:20px; z-index:60;
+    background:var(--grad); color:#fff; border:none; border-radius:30px;
+    padding:16px 22px; font-weight:700; font-size:14px; box-shadow:0 8px 24px rgba(168,85,247,0.35);
+    display:flex; align-items:center; gap:8px; cursor:pointer;
+  }
+
+  /* ---------- MODAL ---------- */
+  .modal-overlay{
+    display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:200;
+    align-items:flex-end; justify-content:center;
+  }
+  .modal-overlay.open{display:flex;}
+  .modal{
+    background:var(--panel); width:100%; max-width:480px; border-radius:20px 20px 0 0;
+    padding:20px; max-height:92vh; overflow-y:auto;
+  }
+  .modal-title{font-size:18px; font-weight:800; margin-bottom:16px;}
+  .field{margin-bottom:12px;}
+  .field label{display:block; font-size:12px; color:var(--muted); margin-bottom:5px; font-weight:600;}
+  .field input, .field select, .field textarea{
+    width:100%; padding:12px; border-radius:10px; border:1px solid var(--border);
+    background:var(--panel2); color:var(--text); font-size:15px; font-family:inherit;
+  }
+  .field textarea{resize:vertical; min-height:60px;}
+  .field-row{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .dept-select{display:flex; gap:8px;}
+  .dept-btn{
+    flex:1; padding:10px; border-radius:10px; border:1px solid var(--border); background:var(--panel2);
+    color:var(--muted); font-size:12px; font-weight:700; text-align:center; cursor:pointer;
+  }
+  .dept-btn.selected{background:var(--grad); color:#fff; border-color:transparent;}
+  .photo-upload-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:6px;}
+  .photo-thumb{position:relative; width:60px; height:60px;}
+  .photo-thumb img{width:100%;height:100%;object-fit:cover;border-radius:8px;}
+  .photo-thumb .rm{position:absolute; top:-6px; right:-6px; background:var(--danger); color:#fff; border-radius:50%; width:20px;height:20px; font-size:12px; display:flex;align-items:center;justify-content:center; cursor:pointer;}
+  .add-photo-btn{width:60px;height:60px;border-radius:8px;border:1px dashed var(--border); background:var(--panel2); color:var(--muted); display:flex;align-items:center;justify-content:center; font-size:22px; cursor:pointer;}
+  .modal-buttons{display:flex; gap:10px; margin-top:20px;}
+  .modal-buttons .btn{flex:1; padding:14px; font-size:14px;}
+  .close-x{position:absolute; top:16px; right:16px; color:var(--muted); font-size:20px; cursor:pointer;}
+
+  /* ---------- REPORT ---------- */
+  #reportModal .modal{max-width:100%;}
+  .report-options{display:flex; gap:8px; margin-bottom:16px;}
+  .report-options .tab{flex:1; text-align:center;}
+  #reportContent{background:#fff; color:#111; border-radius:12px; padding:16px; font-size:13px;}
+  #reportContent h2{font-size:18px; margin:0 0 2px;}
+  #reportContent .rep-sub{color:#666; font-size:12px; margin-bottom:14px;}
+  #reportContent table{width:100%; border-collapse:collapse; margin-bottom:14px; font-size:11.5px;}
+  #reportContent th{text-align:left; padding:6px 4px; border-bottom:2px solid #222; font-size:10px; text-transform:uppercase; color:#555;}
+  #reportContent td{padding:6px 4px; border-bottom:1px solid #eee;}
+  #reportContent .sect-title{font-weight:800; font-size:14px; margin:16px 0 6px; padding-top:10px; border-top:1px solid #ddd;}
+  #reportContent .sect-title:first-child{border-top:none; margin-top:0;}
+  #reportContent .grand-total{border-top:3px solid #111; margin-top:10px; padding-top:10px; font-size:16px; font-weight:800; display:flex; justify-content:space-between;}
+  #reportContent .sect-total{text-align:right; font-weight:700; font-size:13px; margin-top:4px;}
+
+  @media print{
+    body *{visibility:hidden;}
+    #reportContent, #reportContent *{visibility:visible;}
+    #reportContent{position:absolute; top:0; left:0; width:100%; padding:0;}
+    @page{margin:14mm;}
+  }
+
+  .toast{
+    position:fixed; bottom:100px; left:50%; transform:translateX(-50%);
+    background:var(--panel2); border:1px solid var(--border); color:var(--text);
+    padding:10px 18px; border-radius:20px; font-size:13px; font-weight:600; z-index:300;
+    opacity:0; transition:opacity 0.3s; pointer-events:none;
+  }
+  .toast.show{opacity:1;}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginScreen">
+  <div class="login-box">
+    <div class="login-logo">Wash & Detailing</div>
+    <div class="login-sub">Accès protégé</div>
+    <input type="password" id="passwordInput" placeholder="Mot de passe" inputmode="text">
+    <button id="loginBtn" class="btn btn-primary">Déverrouiller</button>
+    <div id="loginError"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <header>
+    <div class="header-top">
+      <div class="brand">
+        <div class="brand-icon">W</div>
+        <div class="brand-text">
+          <div class="brand-title">Wash & Detailing</div>
+          <div class="brand-eyebrow">Atelier · Suivi des travaux</div>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-ghost" onclick="openReport()">Rapports</button>
+      </div>
+    </div>
+    <div class="tabs">
+      <div class="tab active" data-dept="all" onclick="setTab('all')">Tous</div>
+      <div class="tab" data-dept="Service" onclick="setTab('Service')">Service</div>
+      <div class="tab" data-dept="New Cars" onclick="setTab('New Cars')">New Cars</div>
+      <div class="tab" data-dept="Used Cars" onclick="setTab('Used Cars')">Used Cars</div>
+    </div>
+  </header>
+
+  <div class="totals">
+    <div class="total-card"><div class="total-label">Service</div><div class="total-value" id="totService">0,00 $</div></div>
+    <div class="total-card"><div class="total-label">New Cars</div><div class="total-value" id="totNew">0,00 $</div></div>
+    <div class="total-card"><div class="total-label">Used Cars</div><div class="total-value" id="totUsed">0,00 $</div></div>
+    <div class="total-card highlight"><div class="total-label">Total général</div><div class="total-value" id="totAll">0,00 $</div></div>
+  </div>
+
+  <main id="jobsList"></main>
+
+  <button class="fab" onclick="openJobModal()">+ Nouveau travail</button>
+</div>
+
+<!-- JOB MODAL -->
+<div class="modal-overlay" id="jobModal">
+  <div class="modal" style="position:relative;">
+    <div class="close-x" onclick="closeJobModal()">✕</div>
+    <div class="modal-title" id="jobModalTitle">Nouveau travail</div>
+
+    <div class="field">
+      <label>Département</label>
+      <div class="dept-select">
+        <div class="dept-btn" data-dept="Service" onclick="selectDept('Service')">Service</div>
+        <div class="dept-btn" data-dept="New Cars" onclick="selectDept('New Cars')">New Cars</div>
+        <div class="dept-btn" data-dept="Used Cars" onclick="selectDept('Used Cars')">Used Cars</div>
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div class="field">
+        <label>Invoice Number</label>
+        <input type="text" id="f_invoice" inputmode="numeric">
+      </div>
+      <div class="field">
+        <label>Tag</label>
+        <input type="text" id="f_tag">
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div class="field">
+        <label>Work Order</label>
+        <input type="text" id="f_workorder">
+      </div>
+      <div class="field">
+        <label>VIN</label>
+        <input type="text" id="f_vin">
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Description</label>
+      <textarea id="f_description"></textarea>
+    </div>
+
+    <div class="field-row">
+      <div class="field">
+        <label>Prix ($)</label>
+        <input type="number" id="f_price" inputmode="decimal" step="0.01">
+      </div>
+      <div class="field">
+        <label>Date</label>
+        <input type="date" id="f_date">
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Photos</label>
+      <div class="photo-upload-row" id="photoRow">
+        <div class="add-photo-btn" onclick="document.getElementById('photoInput').click()">+</div>
+      </div>
+      <input type="file" id="photoInput" accept="image/*" multiple style="display:none" onchange="handlePhotoSelect(event)">
+    </div>
+
+    <div class="modal-buttons">
+      <button class="btn btn-ghost" style="flex:0.6" onclick="closeJobModal()">Annuler</button>
+      <button class="btn btn-primary" onclick="saveJob()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- REPORT MODAL -->
+<div class="modal-overlay" id="reportModal">
+  <div class="modal">
+    <div class="close-x" onclick="closeReport()">✕</div>
+    <div class="modal-title">Rapports</div>
+    <div class="report-options">
+      <div class="tab active" id="repDaily" onclick="setReportType('daily')">Journalier</div>
+      <div class="tab" id="repWeekly" onclick="setReportType('weekly')">Hebdomadaire</div>
+    </div>
+    <div id="reportContent"></div>
+    <div class="modal-buttons">
+      <button class="btn btn-primary" style="flex:1" onclick="window.print()">Imprimer / PDF</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ---------- CONFIG ----------
+const SUPABASE_URL = 'https://utfdyljtbfeiowgmuwys.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_nUznqh18LHT04SRzyjx_vA_QRoTskqP';
+const APP_PASSWORD = 'NAWFELl98@@GG';
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ---------- LOGIN ----------
+function checkLogin(){
+  const saved = sessionStorage.getItem('wd_auth');
+  if(saved === 'ok'){
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    init();
+  }
+}
+document.getElementById('loginBtn').addEventListener('click', tryLogin);
+document.getElementById('passwordInput').addEventListener('keydown', e=>{ if(e.key==='Enter') tryLogin(); });
+function tryLogin(){
+  const val = document.getElementById('passwordInput').value;
+  if(val === APP_PASSWORD){
+    sessionStorage.setItem('wd_auth','ok');
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    init();
+  } else {
+    document.getElementById('loginError').textContent = 'Mot de passe incorrect';
+    document.getElementById('passwordInput').value = '';
+  }
+}
+checkLogin();
+
+// ---------- STATE ----------
+let jobs = [];
+let currentTab = 'all';
+let editingId = null;
+let selectedDept = 'Service';
+let pendingPhotos = []; // {file, dataUrl}
+let existingPhotos = []; // urls kept when editing
+let reportType = 'daily';
+
+async function init(){
+  await loadJobs();
+}
+
+async function loadJobs(){
+  const { data, error } = await sb.from('jobs').select('*').order('created_at', {ascending:false});
+  if(error){ showToast('Erreur de chargement'); console.error(error); return; }
+  jobs = data || [];
+  render();
+}
+
+function setTab(dept){
+  currentTab = dept;
+  document.querySelectorAll('.tab[data-dept]').forEach(t=>t.classList.toggle('active', t.dataset.dept===dept));
+  render();
+}
+
+function render(){
+  const list = document.getElementById('jobsList');
+  const filtered = currentTab==='all' ? jobs : jobs.filter(j=>j.department===currentTab);
+
+  let totService=0, totNew=0, totUsed=0;
+  jobs.forEach(j=>{
+    const p = parseFloat(j.price)||0;
+    if(j.department==='Service') totService+=p;
+    else if(j.department==='New Cars') totNew+=p;
+    else if(j.department==='Used Cars') totUsed+=p;
+  });
+  document.getElementById('totService').textContent = fmt(totService);
+  document.getElementById('totNew').textContent = fmt(totNew);
+  document.getElementById('totUsed').textContent = fmt(totUsed);
+  document.getElementById('totAll').textContent = fmt(totService+totNew+totUsed);
+
+  if(filtered.length===0){
+    list.innerHTML = `<div class="empty-state"><h3>Aucun travail enregistré</h3><p>Ajoutez votre premier travail avec le bouton « Nouveau travail ».</p></div>`;
+    return;
+  }
+
+  list.innerHTML = filtered.map(j=>{
+    const deptClass = j.department==='Service'?'service':(j.department==='New Cars'?'newcars':'usedcars');
+    const photos = (j.photos||[]);
+    return `
+    <div class="job-card">
+      <div class="job-top">
+        <div class="job-invoice">#${esc(j.invoice_number||'—')}</div>
+        <div class="job-dept ${deptClass}">${esc(j.department)}</div>
+      </div>
+      <div class="job-grid">
+        <div>Tag: <b>${esc(j.tag||'—')}</b></div>
+        <div>W.O.: <b>${esc(j.work_order||'—')}</b></div>
+        <div>VIN: <b>${esc(j.vin||'—')}</b></div>
+        <div>Date: <b>${fmtDate(j.job_date)}</b></div>
+      </div>
+      ${j.description ? `<div class="job-desc">${esc(j.description)}</div>` : ''}
+      ${photos.length ? `<div class="job-photos">${photos.map(p=>`<img src="${p}">`).join('')}</div>` : ''}
+      <div class="job-bottom">
+        <div class="job-price">${fmt(parseFloat(j.price)||0)}</div>
+        <div class="job-actions">
+          <div class="icon-btn" onclick="editJob('${j.id}')">✎</div>
+          <div class="icon-btn" onclick="deleteJob('${j.id}')">🗑</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function fmt(n){ return n.toLocaleString('fr-CA',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' $'; }
+function fmtDate(d){ if(!d) return '—'; const dt=new Date(d+'T00:00:00'); return dt.toLocaleDateString('fr-CA'); }
+function esc(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+// ---------- JOB MODAL ----------
+function openJobModal(){
+  editingId = null;
+  selectedDept = currentTab!=='all' ? currentTab : 'Service';
+  pendingPhotos = [];
+  existingPhotos = [];
+  document.getElementById('jobModalTitle').textContent = 'Nouveau travail';
+  ['f_invoice','f_tag','f_workorder','f_vin','f_description','f_price'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('f_date').value = new Date().toISOString().slice(0,10);
+  updateDeptButtons();
+  renderPhotoRow();
+  document.getElementById('jobModal').classList.add('open');
+}
+function closeJobModal(){ document.getElementById('jobModal').classList.remove('open'); }
+function selectDept(d){ selectedDept = d; updateDeptButtons(); }
+function updateDeptButtons(){
+  document.querySelectorAll('.dept-btn').forEach(b=>b.classList.toggle('selected', b.dataset.dept===selectedDept));
+}
+
+function editJob(id){
+  const j = jobs.find(x=>x.id===id);
+  if(!j) return;
+  editingId = id;
+  selectedDept = j.department;
+  pendingPhotos = [];
+  existingPhotos = (j.photos||[]).slice();
+  document.getElementById('jobModalTitle').textContent = 'Modifier le travail';
+  document.getElementById('f_invoice').value = j.invoice_number||'';
+  document.getElementById('f_tag').value = j.tag||'';
+  document.getElementById('f_workorder').value = j.work_order||'';
+  document.getElementById('f_vin').value = j.vin||'';
+  document.getElementById('f_description').value = j.description||'';
+  document.getElementById('f_price').value = j.price||'';
+  document.getElementById('f_date').value = j.job_date || new Date().toISOString().slice(0,10);
+  updateDeptButtons();
+  renderPhotoRow();
+  document.getElementById('jobModal').classList.add('open');
+}
+
+async function deleteJob(id){
+  if(!confirm('Supprimer ce travail ?')) return;
+  const { error } = await sb.from('jobs').delete().eq('id', id);
+  if(error){ showToast('Erreur de suppression'); return; }
+  showToast('Travail supprimé');
+  await loadJobs();
+}
+
+function renderPhotoRow(){
+  const row = document.getElementById('photoRow');
+  let html = '';
+  existingPhotos.forEach((url, i)=>{
+    html += `<div class="photo-thumb"><img src="${url}"><div class="rm" onclick="removeExistingPhoto(${i})">✕</div></div>`;
+  });
+  pendingPhotos.forEach((p, i)=>{
+    html += `<div class="photo-thumb"><img src="${p.dataUrl}"><div class="rm" onclick="removePendingPhoto(${i})">✕</div></div>`;
+  });
+  html += `<div class="add-photo-btn" onclick="document.getElementById('photoInput').click()">+</div>`;
+  row.innerHTML = html;
+}
+function removeExistingPhoto(i){ existingPhotos.splice(i,1); renderPhotoRow(); }
+function removePendingPhoto(i){ pendingPhotos.splice(i,1); renderPhotoRow(); }
+
+function handlePhotoSelect(e){
+  const files = Array.from(e.target.files||[]);
+  files.forEach(file=>{
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      pendingPhotos.push({file, dataUrl: reader.result});
+      renderPhotoRow();
+    };
+    reader.readAsDataURL(file);
+  });
+  e.target.value = '';
+}
+
+async function uploadPendingPhotos(){
+  const urls = [];
+  for(const p of pendingPhotos){
+    const ext = (p.file.name.split('.').pop()||'jpg').toLowerCase();
+    const path = `job_${Date.now()}_${Math.random().toString(36).slice(2,8)}.${ext}`;
+    const { error } = await sb.storage.from('job-photos').upload(path, p.file);
+    if(error){ console.error(error); continue; }
+    const { data } = sb.storage.from('job-photos').getPublicUrl(path);
+    urls.push(data.publicUrl);
+  }
+  return urls;
+}
+
+async function saveJob(){
+  const invoice = document.getElementById('f_invoice').value.trim();
+  const tag = document.getElementById('f_tag').value.trim();
+  const workorder = document.getElementById('f_workorder').value.trim();
+  const vin = document.getElementById('f_vin').value.trim();
+  const description = document.getElementById('f_description').value.trim();
+  const price = parseFloat(document.getElementById('f_price').value)||0;
+  const jobDate = document.getElementById('f_date').value;
+
+  if(!invoice){ showToast('Le numéro de facture est requis'); return; }
+
+  showToast('Enregistrement...');
+  const newUrls = await uploadPendingPhotos();
+  const allPhotos = [...existingPhotos, ...newUrls];
+
+  const payload = {
+    invoice_number: invoice,
+    tag, work_order: workorder, vin, description,
+    price, department: selectedDept, job_date: jobDate,
+    photos: allPhotos
+  };
+
+  let error;
+  if(editingId){
+    ({ error } = await sb.from('jobs').update(payload).eq('id', editingId));
+  } else {
+    ({ error } = await sb.from('jobs').insert(payload));
+  }
+
+  if(error){ showToast('Erreur d\'enregistrement'); console.error(error); return; }
+  showToast('Travail enregistré');
+  closeJobModal();
+  await loadJobs();
+}
+
+// ---------- REPORTS ----------
+function openReport(){
+  reportType = 'daily';
+  document.getElementById('repDaily').classList.add('active');
+  document.getElementById('repWeekly').classList.remove('active');
+  renderReport();
+  document.getElementById('reportModal').classList.add('open');
+}
+function closeReport(){ document.getElementById('reportModal').classList.remove('open'); }
+function setReportType(t){
+  reportType = t;
+  document.getElementById('repDaily').classList.toggle('active', t==='daily');
+  document.getElementById('repWeekly').classList.toggle('active', t==='weekly');
+  renderReport();
+}
+
+function renderReport(){
+  const now = new Date();
+  let startDate;
+  if(reportType==='daily'){
+    startDate = new Date(now); startDate.setHours(0,0,0,0);
+  } else {
+    startDate = new Date(now); startDate.setDate(now.getDate()-7); startDate.setHours(0,0,0,0);
+  }
+
+  const filtered = jobs.filter(j=>{
+    if(!j.job_date) return false;
+    const d = new Date(j.job_date+'T00:00:00');
+    return d >= startDate;
+  });
+
+  const depts = ['Service','New Cars','Used Cars'];
+  let html = `<h2>Rapport ${reportType==='daily'?'journalier':'hebdomadaire'}</h2>`;
+  html += `<div class="rep-sub">Généré le ${now.toLocaleDateString('fr-CA')} à ${now.toLocaleTimeString('fr-CA',{hour:'2-digit',minute:'2-digit'})}</div>`;
+
+  let grandTotal = 0;
+  depts.forEach(dept=>{
+    const items = filtered.filter(j=>j.department===dept);
+    const sectTotal = items.reduce((s,j)=>s+(parseFloat(j.price)||0),0);
+    grandTotal += sectTotal;
+    html += `<div class="sect-title">${dept}</div>`;
+    if(items.length===0){
+      html += `<div style="color:#888;font-size:12px;margin-bottom:6px;">Aucun travail</div>`;
+    } else {
+      html += `<table><thead><tr><th>Invoice</th><th>Tag</th><th>W.O.</th><th>VIN</th><th>Date</th><th style="text-align:right">Prix</th></tr></thead><tbody>`;
+      items.forEach(j=>{
+        html += `<tr><td>${esc(j.invoice_number||'—')}</td><td>${esc(j.tag||'—')}</td><td>${esc(j.work_order||'—')}</td><td>${esc(j.vin||'—')}</td><td>${fmtDate(j.job_date)}</td><td style="text-align:right">${fmt(parseFloat(j.price)||0)}</td></tr>`;
+      });
+      html += `</tbody></table>`;
+    }
+    html += `<div class="sect-total">Sous-total ${dept}: ${fmt(sectTotal)}</div>`;
+  });
+
+  html += `<div class="grand-total"><span>Total général</span><span>${fmt(grandTotal)}</span></div>`;
+  document.getElementById('reportContent').innerHTML = html;
+}
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(()=>t.classList.remove('show'), 2200);
+}
+</script>
+</body>
+</html>
