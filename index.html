@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Wash & Detailing">
 <title>Wash & Detailing</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/supabase/2.39.7/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root{
     --bg:#0a0a0d;
@@ -330,7 +330,12 @@ const SUPABASE_URL = 'https://utfdyljtbfeiowgmuwys.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_nUznqh18LHT04SRzyjx_vA_QRoTskqP';
 const APP_PASSWORD = 'NAWFELl98@@GG';
 
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+let sb = null;
+try {
+  sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+} catch(e) {
+  console.error('Erreur Supabase:', e);
+}
 
 // ---------- LOGIN ----------
 function checkLogin(){
